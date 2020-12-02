@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"os/user"
 	"strconv"
 	"strings"
@@ -53,7 +56,57 @@ func circleArea(pi float64) func(radius float64) float64 {
 	}
 }
 
+func by2(num int) string {
+	if num%2 == 0 {
+		return "ok"
+	} else {
+		return "no"
+	}
+}
+
+func getOsName() string {
+	return "Mac"
+}
+
+func LoggingSettings(logFile string) {
+	logfile, _ := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	multiLogFile := io.MultiWriter(os.Stdout, logfile)
+	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile)
+	log.SetOutput(multiLogFile)
+}
+
+func thirdPartyConnectDB() {
+	panic("Unable to connect database")
+}
+
+func save() {
+	defer func() {
+		ss := recover()
+		fmt.Println(ss)
+	}()
+	thirdPartyConnectDB()
+}
 func main() {
+	LoggingSettings("test.log")
+
+	save()
+	fmt.Println("ok?")
+
+	file, err := os.Open("./sample.go")
+	if err != nil {
+		log.Fatalln("Error!")
+	}
+	defer file.Close()
+	data := make([]byte, 100)
+	count, err := file.Read(data)
+	if err != nil {
+		log.Fatalln("Error!")
+	}
+	fmt.Println(count, string(data))
+	if err = os.Chdir("test"); err != nil {
+		log.Fatalln("Error")
+	}
+
 	HelloWorld()
 	fmt.Println(i, f64, s, t, f)
 	r1, r2 := add(1, 2)
@@ -133,4 +186,77 @@ func main() {
 	fmt.Println(c)
 	fmt.Println(string(c))
 
+	result := by2(10)
+	if result == "ok" {
+		fmt.Println("great")
+	}
+
+	if result2 := by2(10); result2 == "ok" {
+		fmt.Println("great")
+	}
+
+	for i := 0; i < 10; i++ {
+		if i == 3 {
+			fmt.Println("continue")
+			continue
+		}
+		if i > 5 {
+			fmt.Println("break")
+			break
+		}
+		fmt.Println(i)
+	}
+
+	l := []string{"python", "go", "java"}
+	for i := 0; i < len(l); i++ {
+		fmt.Println(i, l[i])
+	}
+	for i, v := range l {
+		fmt.Println(i, v)
+	}
+	for _, v := range l {
+		fmt.Println(v)
+	}
+	ms := map[string]int{"apple": 100, "banana": 200}
+	for k, v := range ms {
+		fmt.Println(k, v)
+	}
+	for k := range ms {
+		fmt.Println(k)
+	}
+	for _, v := range ms {
+		fmt.Println(v)
+	}
+
+	switch os := getOsName(); os {
+	case "mac":
+		fmt.Println("Mac")
+	case "windows":
+		fmt.Println("Windows")
+	default:
+		fmt.Println("Default", os)
+	}
+
+	t := time.Now()
+	fmt.Println(t.Hour())
+	switch {
+	case t.Hour() < 12:
+		fmt.Println("Morning")
+	case t.Hour() < 17:
+		fmt.Println("Afternoon")
+	}
+
+	file, _ := os.Open("./sample.go")
+	defer file.Close()
+	data := make([]byte, 100)
+	fmt.Println(string(data))
+
+	xsx, ysx := 11, 12
+	if xsx == 10 && ysx == 10 {
+		fmt.Println("&&")
+	}
+
+	if xsx == 10 || ysx == 10 {
+		fmt.Println("||")
+	}
 }
