@@ -86,8 +86,112 @@ func save() {
 	}()
 	thirdPartyConnectDB()
 }
+
+type Vertex struct {
+	X, Y int
+	S    string
+}
+
+func changeVertex(v Vertex) {
+	v.X = 1000
+}
+
+func changeVertex2(v *Vertex) {
+	//(*v).X = 1000
+	v.X = 1000
+}
+
+type Vertexx struct {
+	X, Y int
+}
+
+func (v Vertexx) Area() int {
+	return v.X * v.Y
+}
+
+func (v *Vertexx) Scale(i int) {
+	v.X = v.X * i
+	v.Y = v.Y * i
+}
+
+type Vertexx3D struct {
+	Vertexx
+	z int
+}
+
+func (v Vertexx3D) Area3D() int {
+	return v.X * v.Y * v.z
+}
+
+func (v *Vertexx3D) Scale3D(i int) {
+	v.X = v.X * i
+	v.Y = v.Y * i
+	v.z = v.z * i
+}
+
+func New(x, y, z int) *Vertexx3D {
+	return &Vertexx3D{Vertexx{x, y}, z}
+}
+func Area(v Vertexx) int {
+	return v.X * v.Y
+}
+
+type Human interface {
+	Say() string
+}
+
+type Person struct {
+	Name string
+}
+
+func (p *Person) Say() string {
+	p.Name = "Mr." + p.Name
+	fmt.Println(p.Name)
+	return p.Name
+}
+
+func DriveCar(human Human) {
+	if human.Say() == "Mr.Mike" {
+		fmt.Println("Run")
+	} else {
+		fmt.Println("Get out")
+	}
+}
+
 func main() {
 	LoggingSettings("test.log")
+
+	var mike Human = &Person{"Mike"}
+	var x Human = &Person{"x"}
+	DriveCar(mike)
+	DriveCar(x)
+
+	v10 := New(3, 4, 5)
+	v10.Scale3D(10)
+	fmt.Println(v10.Area3D())
+
+	v := Vertex{X: 1, Y: 2}
+	fmt.Println(v)
+	fmt.Println(v.X, v.Y)
+	v.X = 100
+	fmt.Println(v.X, v.Y)
+
+	v2 := Vertex{X: 1}
+	fmt.Println(v2)
+
+	v3 := Vertex{1, 2, "test"}
+	fmt.Println(v3)
+
+	v4 := Vertex{}
+	fmt.Println(v4)
+
+	v11 := Vertex{1, 2, "test"}
+	changeVertex(v11)
+	fmt.Println(v11)
+
+	v12 := &Vertex{1, 2, "test"}
+	changeVertex2(v12)
+	fmt.Println(v12)
 
 	save()
 	fmt.Println("ok?")
