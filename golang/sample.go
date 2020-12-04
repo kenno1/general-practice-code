@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 	"os/user"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -158,8 +158,113 @@ func DriveCar(human Human) {
 	}
 }
 
+func do(i interface{}) {
+	switch v := i.(type) {
+	case int:
+		fmt.Println(v * 2)
+	case string:
+		fmt.Println(v + "!")
+	default:
+		fmt.Println("I don't know %T\n", v)
+	}
+}
+
+type UserNotFound struct {
+	Username string
+}
+
+func (e *UserNotFound) Error() string {
+	return fmt.Sprintln("User not found: %v", e.Username)
+}
+
+func myFunc() error {
+	ok := false
+	if ok {
+		return nil
+	}
+	return &UserNotFound{Username: "mike"}
+}
+
+func goroutine(s string, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for i := 0; i < 5; i++ {
+		fmt.Println(s)
+	}
+}
+
+func normal(s string) {
+	for i := 0; i < 5; i++ {
+		fmt.Println(s)
+	}
+}
+
+func goroutine1(s []int, c chan int) {
+	sum := 0
+	for _, v := range s {
+		sum += v
+	}
+	c <- sum
+}
+
+func goroutine2(s []int, c chan int) {
+	sum := 0
+	for _, v := range s {
+		sum += v
+	}
+	c <- sum
+}
+
+func producer(ch chan int, wg *sync.WaitGroup) {
+	// Something
+	ch <- i * 2
+}
+
+func consumer(ch chan int, wg *sync.WaitGroup) {
+	for i := range ch {
+		func() {
+			defer wg.Done()
+			fmt.Println("process", i*1000)
+		}()
+	}
+	fmt.Println("#########################")
+}
+
 func main() {
 	LoggingSettings("test.log")
+
+	ch := make(chan int, 2)
+	ch <- 100
+	fmt.Println(len(ch))
+	ch <- 200
+	fmt.Println(len(ch))
+	close(ch)
+
+	for ch2 := range ch {
+		fmt.Println(ch2)
+	}
+
+	sgo := []int{1, 2, 3, 4, 5}
+	cgo := make(chan int)
+	go goroutine1(sgo, cgo)
+	go goroutine2(sgo, cgo)
+	xgo := <-cgo
+	fmt.Println(xgo)
+	ygo := <-cgo
+	fmt.Println(ygo)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go goroutine("world", &wg)
+	normal("hello")
+	wg.Wait()
+
+	if err := myFunc(); err != nil {
+		fmt.Println(err)
+	}
+
+	do(10)
+	do("Mike")
+	do(true)
 
 	var mike Human = &Person{"Mike"}
 	var x Human = &Person{"x"}
@@ -257,13 +362,13 @@ func main() {
 	fmt.Println(strings.Replace(s, "H", "X", 1))
 	fmt.Println(strings.Contains(s, "test"))
 
-	var x int = 1
-	xx := float64(x)
-	var y float64 = 1.2
-	xy := int(y)
-	var s string = "14"
-	i, _ := strconv.Atoi(s)
-	fmt.Println(xx, xy, i)
+	// var x int = 1
+	// xx := float64(x)
+	// var y float64 = 1.2
+	// xy := int(y)
+	// var s string = "14"
+	// i, _ := strconv.Atoi(s)
+	// fmt.Println(xx, xy, i)
 
 	n := []int{1, 2, 3, 4, 5, 6}
 	fmt.Println(n)
@@ -280,11 +385,11 @@ func main() {
 	fmt.Println(m["apple"])
 	m["new"] = 500
 
-	v, ok := m["apple"]
-	fmt.Println(v, ok)
+	// v, ok := m["apple"]
+	// fmt.Println(v, ok)
 
-	v2, ok2 := m["nothing"]
-	fmt.Println(v2, ok2)
+	// v2, ok2 := m["nothing"]
+	// fmt.Println(v2, ok2)
 
 	c := []byte("HI")
 	fmt.Println(c)
@@ -350,10 +455,10 @@ func main() {
 		fmt.Println("Afternoon")
 	}
 
-	file, _ := os.Open("./sample.go")
-	defer file.Close()
-	data := make([]byte, 100)
-	fmt.Println(string(data))
+	// file, _ := os.Open("./sample.go")
+	// defer file.Close()
+	// data := make([]byte, 100)
+	// fmt.Println(string(data))
 
 	xsx, ysx := 11, 12
 	if xsx == 10 && ysx == 10 {
