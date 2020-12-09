@@ -229,8 +229,101 @@ func consumer(ch chan int, wg *sync.WaitGroup) {
 	fmt.Println("#########################")
 }
 
+func producer1(first chan int) {
+	defer close(first)
+	for i := 0; i < 10; i++ {
+		first <- i
+	}
+}
+
+func multi2(first chan int, second chan int) {
+	defer close(second)
+	for i := range first {
+		second <- i * 2
+	}
+}
+
+func multi4(second chan int, third chan int) {
+	defer close(third)
+	for i := range second {
+		third <- i * 4
+	}
+}
+
+func goroutine11(ch chan string) {
+	for {
+		ch <- "packet from 1"
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func goroutine22(ch chan string) {
+	for {
+		ch <- "packet from 1"
+		time.Sleep(1 * time.Second)
+	}
+}
+
+type Counter struct {
+	v   map[string]int
+	mux sync.Mutex
+}
+
+func (c *Counter) Inc(key string) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	c.v[key]++
+}
+
+func (c *Counter) Value(key string) int {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	return c.v[key]
+}
+
 func main() {
 	LoggingSettings("test.log")
+
+	c := Counter{v: make(map[string]int)}
+	go func() {
+		for i := 0; i < 10; i++ {
+			c.Inc("Key")
+		}
+	}()
+	go func() {
+		for i := 0; i < 10; i++ {
+			c.Inc("Key")
+		}
+	}()
+	time.Sleep(1 * time.Second)
+	fmt.Println(c, c.Value("Key"))
+
+	c11 := make(chan string)
+	c22 := make(chan string)
+	go goroutine11(c11)
+	go goroutine22(c22)
+
+OuterLoop:
+	for {
+		select {
+		case msg1 := <-c11:
+			fmt.Println(msg1)
+		case msg2 := <-c22:
+			fmt.Println(msg2)
+		}
+		break OuterLoop
+	}
+
+	first := make(chan int)
+	second := make(chan int)
+	third := make(chan int)
+
+	go producer1(first)
+	go multi2(first, second)
+	go multi4(second, third)
+	for result := range third {
+		fmt.Println(result)
+	}
 
 	ch := make(chan int, 2)
 	ch <- 100
@@ -390,10 +483,6 @@ func main() {
 
 	// v2, ok2 := m["nothing"]
 	// fmt.Println(v2, ok2)
-
-	c := []byte("HI")
-	fmt.Println(c)
-	fmt.Println(string(c))
 
 	result := by2(10)
 	if result == "ok" {
