@@ -1,14 +1,20 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/user"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-ini/ini"
+	"golang.org/x/sync/semaphore"
 )
 
 func init() {
@@ -281,8 +287,100 @@ func (c *Counter) Value(key string) int {
 	return c.v[key]
 }
 
+const (
+	_      = iota
+	KB int = 1 << (10 * iota)
+	MB
+	GB
+)
+
+func longProcess(ctx context.Context, ch chan string) {
+	fmt.Println("run")
+	time.Sleep(2 * time.Second)
+	fmt.Println("finish")
+	ch <- "result"
+}
+
+type PersonMarshal struct {
+	Name      string   `json:"name,omitempty"`
+	Age       int      `json:"age,omitempty"`
+	Nicknames []string `json:nicknames"`
+}
+
+var semaph *semaphore.Weighted = semaphore.NewWeighted(1)
+
+func longProcessSemph(ctx context.Context) {
+	isAcquire := semaph.TryAcquire(1)
+	if !isAcquire {
+		fmt.Println("Could not get lock")
+		return
+	}
+	defer semaph.Release(1)
+	fmt.Println("Wait...")
+	time.Sleep(1 * time.Second)
+	fmt.Println("Done")
+}
+
+type ConfigList struct {
+	Port      int
+	DbName    string
+	SQLDriver string
+}
+
+var Config ConfigList
+
+func init() {
+	cfg, _ := ini.Load("config.ini")
+	Config = ConfigList{
+		Port:      cfg.Section("web").Key("port").MustInt(),
+		DbName:    cfg.Section("db").Key("name").MustString("example.sql"),
+		SQLDriver: cfg.Section("db").Key("driver").String(),
+	}
+}
 func main() {
 	LoggingSettings("test.log")
+
+	b := []byte(`{"name":"mike", "age":20, "nicknames": ["a","b","c"]}`)
+	var p1 PersonMarshal
+	if err := json.Unmarshal(b, &p1); err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(p1.Name, p1.Age, p1.Nicknames)
+
+	v01, _ := json.Marshal(p1)
+	fmt.Println(string(v01))
+
+	ch1 := make(chan string)
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	go longProcess(ctx, ch1)
+
+CTXLOOP:
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println(ctx.Err())
+			break CTXLOOP
+		case <-ch1:
+			fmt.Println("success")
+			break CTXLOOP
+		}
+	}
+
+	fmt.Println(KB, MB, GB)
+
+	t1 := time.Now()
+	fmt.Println(t1.Format(time.RFC3339))
+
+	r11 := regexp.MustCompile("a([a-z]+)e")
+	ms1 := r11.MatchString("apple")
+	fmt.Println(ms1)
+
+	r22 := regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+	fs := r22.FindString("/view/test")
+	fss := r22.FindStringSubmatch("/view/test")
+	fmt.Println(fs, fss[0], fss[1], fss[2])
 
 	c := Counter{v: make(map[string]int)}
 	go func() {
